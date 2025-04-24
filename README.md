@@ -193,3 +193,23 @@ Dự án này được cấp phép theo Giấy phép MIT. Xem file [LICENSE](LIC
 For questions or support, please open an issue on GitHub.
 
 Nếu có câu hỏi hoặc cần hỗ trợ, vui lòng mở một issue trên GitHub.
+
+## Acknowledgments / Lời cảm ơn
+
+### English
+A special thanks to the following authors for their inspiring work, which helped shape this project:
+- [Isaac Kogan](https://github.com/isaackogan) for the [TikTokLive](https://github.com/isaackogan/TikTokLive) library, a powerful tool for interacting with TikTok LIVE events.
+- [David Teather](https://github.com/davidteather) for the [TikTok-Api](https://github.com/davidteather/TikTok-Api), an excellent unofficial API wrapper for TikTok.
+
+### Tiếng Việt
+Lời cảm ơn đặc biệt đến các tác giả sau vì những công trình truyền cảm hứng, đã góp phần định hình dự án này:
+- [Isaac Kogan](https://github.com/isaackogan) với thư viện [TikTokLive](https://github.com/isaackogan/TikTokLive), một công cụ mạnh mẽ để tương tác với các sự kiện TikTok LIVE.
+- [David Teather](https://github.com/davidteather) với [TikTok-Api](https://github.com/davidteather/TikTok-Api), một wrapper API không chính thức tuyệt vời cho TikTok.
+
+## Download Executable / Tải file thực thi
+
+### English
+Download the Windows executable from the [Releases](https://github.com/chillchill4share/tiktok-video-downloader/releases) page.
+
+### Tiếng Việt
+Tải file thực thi cho Windows từ trang [Releases](https://github.com/chillchill4share/tiktok-video-downloader/releases).
