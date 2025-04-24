@@ -7,8 +7,8 @@ import json
 
 class TikTokDownloader:
     COOKIES = {
-        "sessionid": "your_session_id_here",
-        "ttwid": "your_ttwid_here"
+        "sessionid": "your_session_id_here", # cần cookies nếu tiktok yêu cầu đăng nhập
+        "ttwid": "your_ttwid_here" # cần cookies nếu tiktok yêu cầu đăng nhập
     }
 
     def __init__(self):
