@@ -193,3 +193,11 @@ Dự án này được cấp phép theo Giấy phép MIT. Xem file [LICENSE](LIC
 For questions or support, please open an issue on GitHub.
 
 Nếu có câu hỏi hoặc cần hỗ trợ, vui lòng mở một issue trên GitHub.
+
+## Download Executable / Tải file thực thi
+
+### English
+Download the Windows executable from the [Releases](https://github.com/chillchill4share/tiktok-video-downloader/releases) page.
+
+### Tiếng Việt
+Tải file thực thi cho Windows từ trang [Releases](https://github.com/chillchill4share/tiktok-video-downloader/releases).
