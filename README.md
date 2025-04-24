@@ -97,6 +97,7 @@ A Python-based GUI application for downloading TikTok videos using Tkinter. This
 ### English
 1. Update TikTok cookies:
    - Open `api.py` and replace `your_session_id_here` and `your_ttwid_here` in the `COOKIES` dictionary with valid TikTok cookies.
+   - Cookies are needed in cases where TikTok requires login to view the video.
    - You can obtain cookies by logging into TikTok in a browser and using the browser's developer tools (F12 → Network tab).
 2. Run the application:
    ```bash
@@ -113,6 +114,7 @@ A Python-based GUI application for downloading TikTok videos using Tkinter. This
 ### Tiếng Việt
 1. Cập nhật cookies TikTok:
    - Mở file `api.py` và thay thế `your_session_id_here` và `your_ttwid_here` trong dictionary `COOKIES` bằng cookies TikTok hợp lệ.
+   - Cần sử dụng cookies trong trường hợp tiktok yêu cầu đăng nhập để xem video
    - Bạn có thể lấy cookies bằng cách đăng nhập TikTok trên trình duyệt và sử dụng công cụ phát triển (F12 → tab Network).
 2. Chạy ứng dụng:
    ```bash
