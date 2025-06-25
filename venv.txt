@@ -1,0 +1,5 @@
+python -m venv venv
+.\venv\Scripts\activate
+pip install requests pyinstaller
+pyinstaller --clean gui.spec
+
