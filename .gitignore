@@ -2,3 +2,5 @@ Output/
 download.txt
 gui.exe 
 venv/
+build/
+dist/
