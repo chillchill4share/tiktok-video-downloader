@@ -1,14 +1,40 @@
+# logic.py
 import requests
 import os
 import logging
 import asyncio
 
 def extract_video_id_from_url(url, headers={}, proxy=None):
-    url = requests.head(url=url, allow_redirects=True, headers=headers, proxies=proxy).url
-    if "@" in url and "/video/" in url:
-        return url.split("/video/")[1].split("?")[0]
-    else:
-        raise TypeError("Định dạng URL không được hỗ trợ.")
+    """
+    Trích xuất ID video từ URL.
+    Hàm này giờ đây sẽ ghi log chi tiết hơn để chẩn đoán lỗi.
+    """
+    logger = logging.getLogger(__name__)
+    try:
+        logger.debug(f"Thực hiện HEAD request tới URL: {url}")
+        response = requests.head(url=url, allow_redirects=True, headers=headers, proxies=proxy, timeout=10)
+        response.raise_for_status() # Gây lỗi nếu status code là 4xx hoặc 5xx
+        
+        final_url = response.url
+        logger.debug(f"URL cuối cùng sau khi chuyển hướng là: {final_url}")
+
+        if "@" in final_url and "/video/" in final_url:
+            video_id = final_url.split("/video/")[1].split("?")[0]
+            logger.debug(f"Trích xuất thành công video_id: {video_id} từ {final_url}")
+            return video_id
+        else:
+            # Đây là điểm có thể gây lỗi. Ghi log lại URL không hợp lệ.
+            logger.error(f"URL cuối cùng '{final_url}' không có định dạng '@.../video/...' như mong đợi.")
+            raise TypeError(f"Định dạng URL cuối cùng không được hỗ trợ: {final_url}")
+            
+    except requests.RequestException as e:
+        logger.error(f"Lỗi mạng trong khi thực hiện HEAD request tới {url}: {e}", exc_info=True)
+        # Ném lại lỗi để khối try-except bên ngoài (trong standardize_url) có thể bắt được
+        raise
+    except TypeError as e:
+        # Ném lại lỗi TypeError để khối try-except bên ngoài bắt được
+        raise
+
 
 def retry_api(session, url, params=None, max_attempts=3, delay=2):
     """Thử lại API tối đa max_attempts lần nếu thất bại."""

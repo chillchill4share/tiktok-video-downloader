@@ -1,195 +1,124 @@
 import asyncio
 import requests
-from logic import extract_video_id_from_url, EmptyResponseException, InvalidJSONException, retry_api
+from logic import retry_api
 import logging
-import re
 import json
+import re
+import os
 
 class TikTokDownloader:
     COOKIES = {
-        "sessionid": "your_session_id_here", # cần cookies nếu tiktok yêu cầu đăng nhập
-        "ttwid": "your_ttwid_here" # cần cookies nếu tiktok yêu cầu đăng nhập
+        # Bạn có thể để trống hoặc điền cookies của mình để tăng độ ổn định
+        "sessionid": "",
+        "ttwid": ""
     }
 
     def __init__(self):
-        self.session = None
-        self.configure_logging()
+        self.logger = logging.getLogger(__name__)
+        self.session = requests.Session()
         self.initialize_session()
 
-    def configure_logging(self):
-        self.logger = logging.getLogger(__name__)
-
     def initialize_session(self):
-        self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-            "Accept": "video/mp4,video/webm,video/ogg,text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9,vi-VN;q=0.8",
             "Referer": "https://www.tiktok.com/",
-            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Dest": "video",
-            "Connection": "keep-alive",
         })
         self.session.cookies.update(self.COOKIES)
-        self.logger.info("Khởi tạo session với cookies thành công")
-
-    def standardize_url(self, url, mode):
-        url = url.replace('\n', '').replace('%0A', '').strip()
-        if not url:
-            return None
-        if mode in ["single", "multiple"]:
-            if "tiktok.com" in url:
-                try:
-                    video_id = extract_video_id_from_url(url, headers=self.session.headers)
-                    username = url.split("/@")[1].split("/")[0]
-                    return f"https://www.tiktok.com/@{username}/video/{video_id}"
-                except Exception:
-                    self.logger.warning(f"Không thể chuẩn hóa URL video: {url}")
-                    return None
-            elif url.isdigit():
-                return f"https://www.tiktok.com/@someone/video/{url}"
-            else:
-                self.logger.warning(f"URL video không hợp lệ: {url}")
-                return None
-        else:
-            if "tiktok.com" in url:
-                try:
-                    username = url.split("/@")[1].split("/")[0].split("?")[0]
-                    return f"https://www.tiktok.com/@{username}"
-                except Exception:
-                    self.logger.warning(f"Không thể chuẩn hóa URL kênh: {url}")
-                    return None
-            elif url.startswith("@"):
-                return f"https://www.tiktok.com/{url}"
-            else:
-                self.logger.warning(f"URL kênh không hợp lệ: {url}")
-                return None
+        self.logger.info("Khởi tạo session với header của trình duyệt.")
 
     def extract_username_and_video_id(self, url_or_id):
+        """
+        Trích xuất username và video_id từ một URL đầy đủ.
+        Rất quan trọng để tạo thư mục lưu trữ.
+        """
         url_or_id = url_or_id.replace('\n', '').replace('%0A', '').strip()
         if "tiktok.com" in url_or_id and "/video/" in url_or_id:
             clean_url = url_or_id.split("?")[0]
             try:
-                video_id = extract_video_id_from_url(clean_url, headers=self.session.headers)
-                username = clean_url.split("/@")[1].split("/")[0]
+                video_id = self.extract_video_id(clean_url)
+                username_match = re.search(r'/@([^/]+)', clean_url)
+                username = username_match.group(1) if username_match else "unknown"
                 return username, video_id
             except Exception as e:
-                self.logger.error(f"Lỗi trích xuất video ID từ {clean_url}: {str(e)}")
-                return "unknown", url_or_id
-        return "unknown", url_or_id
-
+                self.logger.error(f"Lỗi trích xuất username/video_id từ {clean_url}: {e}")
+                return "unknown", self.extract_video_id(url_or_id)
+        # Nếu đầu vào không phải URL đầy đủ, trả về mặc định
+        return "unknown", self.extract_video_id(url_or_id)
+    
     def extract_video_id(self, url_or_id):
         url_or_id = url_or_id.replace('\n', '').replace('%0A', '').strip()
-        if "tiktok.com" in url_or_id and "/video/" in url_or_id:
-            clean_url = url_or_id.split("?")[0]
-            try:
-                video_id = extract_video_id_from_url(clean_url, headers=self.session.headers)
-                return video_id
-            except Exception as e:
-                self.logger.error(f"Lỗi trích xuất video ID từ {clean_url}: {str(e)}")
-                return url_or_id
+        match = re.search(r'/video/(\d+)', url_or_id)
+        if match: return match.group(1)
+        if url_or_id.isdigit(): return url_or_id
         return url_or_id
 
     def extract_username_from_url(self, url):
         url = url.replace('\n', '').replace('%0A', '').strip()
-        if "tiktok.com" in url:
-            try:
-                username = url.split("/@")[1].split("/")[0].split("?")[0]
-                return username
-            except Exception:
-                self.logger.error(f"Lỗi trích xuất username từ {url}")
-                return "unknown"
-        elif url.startswith("@"):
-            return url.lstrip("@")
-        return url
+        match = re.search(r'@([^/?]+)', url)
+        if match: return match.group(1)
+        self.logger.error(f"Lỗi trích xuất username từ {url}")
+        return "unknown"
 
     async def download_video(self, url_or_id):
         video_id = self.extract_video_id(url_or_id)
         self.logger.info(f"Bắt đầu tải video {video_id}")
-        if "tiktok.com" in url_or_id:
-            self.session.get(url_or_id)
         video_info = await self.get_video_info(url_or_id)
-        download_addr = video_info["video"].get("playAddr", video_info["video"]["downloadAddr"])
-        self.logger.info(f"Tải từ nguồn video {video_id}")
-        max_attempts = 3
-        for attempt in range(max_attempts):
+        if not video_info:
+             raise Exception(f"Không thể lấy thông tin cho video {video_id}")
+        download_addr = None
+        if 'video' in video_info:
+            video_data = video_info['video']
+            download_addr = video_data.get('playAddr') or video_data.get('downloadAddr')
+        if not download_addr:
+            self.logger.error(f"Thất bại: Không tìm thấy địa chỉ tải hợp lệ cho video {video_id}.")
+            raise Exception(f"Video này được bảo vệ hoặc không có link tải công khai.")
+        self.logger.info(f"Đã tìm thấy URL tải cho {video_id}. Bắt đầu tải xuống...")
+        for attempt in range(3):
             try:
                 response = self.session.get(download_addr, stream=True, timeout=30)
                 response.raise_for_status()
-                video_bytes = bytearray()
-                for chunk in response.iter_content(chunk_size=4096):
-                    if chunk:
-                        video_bytes.extend(chunk)
-                if len(video_bytes) < 1024:
-                    self.logger.error(f"Thử {attempt + 1}: Video {video_id} quá nhỏ, kích thước={len(video_bytes)} bytes")
-                    raise Exception(f"Kích thước video quá nhỏ: {len(video_bytes)} bytes")
+                video_bytes = response.content
+                if len(video_bytes) < 50 * 1024:
+                    raise Exception(f"Kích thước video tải về quá nhỏ, có thể đây là video được bảo vệ.")
                 self.logger.info(f"Tải video {video_id} thành công, kích thước={len(video_bytes)} bytes")
-                return bytes(video_bytes)
+                return video_bytes
             except requests.RequestException as e:
-                self.logger.error(f"Thử {attempt + 1} thất bại: Lỗi HTTP {e}")
-                if attempt == max_attempts - 1:
-                    raise Exception(f"Tải video {video_id} thất bại sau {max_attempts} lần thử")
+                self.logger.error(f"Thử {attempt + 1}/3 thất bại khi tải {video_id}: {e}")
+                if attempt == 2: raise Exception(f"Tải video {video_id} thất bại sau 3 lần thử")
                 await asyncio.sleep(2)
+        return None
 
     async def get_video_info(self, url_or_id):
-        url_or_id = url_or_id.replace('\n', '').replace('%0A', '').strip()
-        if "tiktok.com" not in url_or_id:
-            url = f"https://www.tiktok.com/@someone/video/{url_or_id}"
-        else:
-            url = url_or_id.split("?")[0]
-        self.logger.info(f"Lấy thông tin video {self.extract_video_id(url)}")
-        r = self.session.get(url)
-        if r.status_code != 200:
-            self.logger.error(f"Lấy thông tin video thất bại: mã trạng thái={r.status_code}, URL={url}")
-            raise Exception(f"Lấy thông tin video thất bại: mã trạng thái={r.status_code}")
-        start = r.text.find('<script id="SIGI_STATE" type="application/json">')
-        if start != -1:
-            start += len('<script id="SIGI_STATE" type="application/json">')
-            end = r.text.find("</script>", start)
-            data = json.loads(r.text[start:end])
-            video_info = data["ItemModule"][self.extract_video_id(url)]
-        else:
-            start = r.text.find('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">')
-            start += len('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">')
-            end = r.text.find("</script>", start)
-            data = json.loads(r.text[start:end])
-            video_info = data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
-        self.logger.info(f"Lấy thông tin video {self.extract_video_id(url)} thành công")
-        return video_info
+        video_url = url_or_id
+        if "tiktok.com" not in video_url: video_url = f"https://www.tiktok.com/t/{video_url}"
+        self.logger.info(f"Phân tích trực tiếp trang video: {video_url}")
+        try:
+            r = self.session.get(video_url, allow_redirects=True)
+            r.raise_for_status()
+            html_content = r.text
+            match = re.search(r'<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">(.*?)</script>', html_content)
+            if not match: match = re.search(r'<script id="SIGI_STATE" type="application/json">(.*?)</script>', html_content)
+            if not match:
+                self.logger.error("Không tìm thấy thẻ script chứa JSON trong trang.")
+                return None
+            json_data = json.loads(match.group(1))
+            video_info = None
+            if "webapp.video-detail" in json_data.get("__DEFAULT_SCOPE__", {}):
+                video_info = json_data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
+            elif "ItemModule" in json_data:
+                video_id = self.extract_video_id(url_or_id)
+                if video_id in json_data["ItemModule"]: video_info = json_data["ItemModule"][video_id]
+            if video_info:
+                self.logger.info("Phân tích trang và trích xuất thông tin video thành công.")
+                return video_info
+            else:
+                self.logger.error("Đã tìm thấy JSON nhưng không có cấu trúc video hợp lệ.")
+                return None
+        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
+            self.logger.error(f"Lỗi khi phân tích trang video: {e}", exc_info=True)
+            return None
 
-    async def get_user_videos(self, username):
-        self.logger.info(f"Lấy danh sách video của {username}")
-        url = f"https://www.tiktok.com/@{username}"
-        r = self.session.get(url)
-        if r.status_code != 200:
-            self.logger.error(f"Lấy trang người dùng thất bại: mã trạng thái={r.status_code}, username={username}")
-            raise Exception(f"Lấy trang người dùng thất bại: mã trạng thái={r.status_code}")
-        start = r.text.find('<script id="SIGI_STATE" type="application/json">')
-        if start != -1:
-            start += len('<script id="SIGI_STATE" type="application/json">')
-            end = r.text.find("</script>", start)
-            data = json.loads(r.text[start:end])
-            sec_uid = data["UserModule"]["users"][username]["secUid"]
-        else:
-            start = r.text.find('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">')
-            start += len('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">')
-            end = r.text.find("</script>", start)
-            data = json.loads(r.text[start:end])
-            sec_uid = data["__DEFAULT_SCOPE__"]["webapp.user-detail"]["userInfo"]["user"]["secUid"]
-
-        videos = []
-        cursor = 0
-        while True:
-            params = {"secUid": sec_uid, "count": 35, "cursor": cursor}
-            r = retry_api(self.session, "https://www.tiktok.com/api/post/item_list/", params=params)
-            data = r.json()
-            for video in data.get("itemList", []):
-                video_id = video["id"]
-                download_addr = video["video"].get("playAddr", video["video"]["downloadAddr"])
-                videos.append((video_id, download_addr))
-            if not data.get("hasMore", False):
-                break
-            cursor = data.get("cursor")
-        self.logger.info(f"Tìm thấy {len(videos)} video từ {username}")
-        return videos
+    async def get_user_videos(self, username_or_url):
+        self.logger.warning("Chức năng tải toàn bộ kênh đang tạm thời không khả dụng do thay đổi từ TikTok.")
+        return []
